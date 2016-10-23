@@ -1,29 +1,34 @@
 import java.io.*;
 import java.text.DateFormat;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.text.SimpleDateFormat;
 import java.util.Scanner;
+import java.util.ArrayList;
+
 
 public class Laba5_Files {
     private static Scanner ascanner = new Scanner(System.in);
     private static final String dir = "tours.txt";
     private static final DateFormat adateform = new SimpleDateFormat("dd.MM.yyyy");
-    private static boolean swf = false;
-    public static void main(String[] args){
-        boolean sw = true;
-        Byte cv = 0;
+    private static boolean swf;
+    private static int currenti = 0;
 
+    public static void main (String[] args) throws IOException,ClassNotFoundException,ParseException{
+        boolean sw = true;
+        swf = false;
+        Byte cv = 0;
         while (sw){
             System.out.println("0. Exit \n1. Show All Tours\n2. Add the Tour\n3. Delete the Tour\n4. Edit the Tour");
             System.out.print("Choice: ");
             cv = ascanner.nextByte();
             switch (cv) {
                 case 0:{sw = false; break;}
-                case 1:{ fileOutput(); break;}
-                case 2:{ addTour(); break;}
-                case 3:{ deleteTour(); break;}
-                case 4:{ editTour(); break;}
+                case 1:{fileOutput(); break;}
+                case 2:{addTour(); break;}
+                case 3:{deleteTour(); break;}
+                case 4:{editTour(); break;}
                 default: {System.out.println("Error: BadInput"); break;}
             }
         }
@@ -34,78 +39,156 @@ public class Laba5_Files {
                 + "| to: " + tmp.country
                 + "| Departure: " + adateform.format(tmp.departuredate)
                 + "| Return: " + adateform.format(tmp.returndate)
+                + "| Price: " + tmp.price
                 + "| Amount: " + tmp.amount;
     }
 
-    public static void fileOutput() {
+    private static void fileOutput() throws ClassNotFoundException,IOException {
+        FileInputStream fis = new FileInputStream(dir);
+        ObjectInputStream ois = new ObjectInputStream(fis);
         try {
-            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(dir));
             Tour tmp;
-            int i = 0;
-            while ((tmp = (Tour) ois.readObject()) != null) {
-                System.out.println("[" + ++i + "] " + getString(tmp));
+            while (fis.available() > 0) {
+                tmp = (Tour) ois.readObject();
+                if (tmp.getEnabled()){System.out.println("[" + tmp.index + "] " + getString(tmp));}
             }
+        } finally{
             ois.close();
-        } catch (EOFException e) {
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 
-    public static void addTour(){
+    private static void addTour() throws IOException,ParseException{
+        ObjectOutputStream oos;
+        File f = new File(dir);
+        if ((!f.exists()) || (!swf)){
+            oos = new ObjectOutputStream(new FileOutputStream(dir,true));
+        }
+        else{
+            oos = new AppendingObjectOutputStream(new FileOutputStream(dir,true));
+        }
         try {
-            ObjectOutputStream oos;
-            File f = new File(dir);
-            if ((!f.exists()) || (swf == false)){
-                oos = new ObjectOutputStream(new FileOutputStream(dir,true));
-            }
-            else{
-                oos = new AppendingObjectOutputStream(new FileOutputStream(dir,true));
-            }
             Tour t = new Tour();
-            System.out.print("Company name: ");
-            t.companyname = ascanner.next();
-            System.out.print("Country: ");
-            t.country = ascanner.next();
-            System.out.print("Departure date [dd.MM.yyyy]: ");
-            try{t.departuredate = adateform.parse(ascanner.next());}catch(ParseException e){e.printStackTrace();}
-            System.out.print("Return date: [dd.MM.yyyy]: ");
-            try{t.returndate = adateform.parse(ascanner.next());}catch(ParseException e){e.printStackTrace();}
-            System.out.print("Amount of vouchers: ");
-            t.amount = ascanner.nextInt();
+            System.out.print("Company name: ");                      t.companyname = ascanner.next();
+            System.out.print("Country: ");                           t.country = ascanner.next();
+            System.out.print("Departure date [dd.MM.yyyy]: ");       t.departuredate = adateform.parse(ascanner.next());
+            System.out.print("Return date [dd.MM.yyyy]: ");          t.returndate = adateform.parse(ascanner.next());
+            System.out.print("Price [_,_]: ");                       t.price = ascanner.nextFloat();
+            System.out.print("Amount of vouchers: ");                t.amount = ascanner.nextInt();
             t.enable();
+            t.index = currenti++;
+            swf = true;
             oos.writeObject(t);
+        } finally {
             oos.flush();
             oos.close();
-            swf = true;
         }
-        catch (FileNotFoundException e) {e.printStackTrace();}
-        catch (IOException e) {e.printStackTrace();}
     }
 
-    public static void deleteTour(){
-        System.out.print("Tour index: "); int i = ascanner.nextInt();
+    private static void deleteTour() throws IOException,ClassNotFoundException {
+        System.out.print("Tour index: "); int index = ascanner.nextInt();
+        ArrayList<Tour> al = getAL();
+        Tour a = al.get(index);
+        a.disable();
+        al.set(index,a);
+        File f = new File(dir);
+        if (f.delete()){System.out.println("Successful file deletion");} else {System.out.print("file is not deleted");}
+        swf = false;
+        writeAL(al);
+        swf = true;
     }
 
-    public static void editTour(){
+    private static ArrayList<Tour> getAL() throws ClassNotFoundException, IOException, EOFException {
+        Tour tmp;
+        ArrayList<Tour> al = new ArrayList<Tour>();
+        FileInputStream fis = new FileInputStream(dir);
+        ObjectInputStream ois = new ObjectInputStream(fis);
+        while (fis.available() > 0) {
+            tmp = (Tour) ois.readObject();
+            al.add(tmp);
+        }
+        fis.close();
+        ois.close();
+        return al;
+    }
 
+    private static void writeAL(ArrayList<Tour> al) throws IOException,ClassNotFoundException{
+        ObjectOutputStream oos;
+        File f = new File(dir);
+        if ((!f.exists()) || (!swf)){
+            oos = new ObjectOutputStream(new FileOutputStream(dir,false));
+        }
+        else{
+            oos = new AppendingObjectOutputStream(new FileOutputStream(dir,true));
+        }
+        for (Tour i: al) {
+            oos.writeObject(i);
+        }
+        swf = true;
+        oos.flush();
+        oos.close();
+    }
+
+    private static void editTour() throws IOException,ClassNotFoundException,ParseException{
+        System.out.print("Tour index: "); int index = ascanner.nextInt();
+        ArrayList<Tour> al = getAL();
+        for (Tour i: al){System.out.println(getString(i));}
+        Boolean sw = true;
+        while (sw) {
+            System.out.println("Change:\n0. Return\n1. Company name\n2. Country\n3. Departure date\n4. Return date\n" +
+                    "5. Price\n6. Amount of vouchers\n7. Reestablish the tour ");
+            System.out.print("Choice: "); Byte cv = ascanner.nextByte();
+            Tour a = al.get(index);
+            switch (cv){
+                case 0: {sw = false; break;}
+                case 1:{System.out.print("New company name: "); a.companyname = ascanner.next(); break;}
+                case 2:{System.out.print("New country: "); a.country = ascanner.next(); break;}
+                case 3:{
+                    System.out.print("New departure date [dd.MM.yyyy]: ");
+                    a.departuredate = adateform.parse(ascanner.next());
+                    break;
+                }
+                case 4:{
+                    System.out.print("New return date [dd.MM.yyyy]: "); a.returndate = adateform.parse(ascanner.next());
+                    break;
+                }
+                case 5:{System.out.print("New price [_,_]: "); a.price = ascanner.nextFloat(); break;}
+                case 6:{System.out.print("New amount: "); a.amount = ascanner.nextInt(); break;}
+                case 7:{
+                    if (a.getEnabled()){
+                        System.out.print("already existing");
+                    }
+                    else{
+                        a.enable();
+                        System.out.println("success!");
+                    }
+                    break;
+                }
+                default:{System.out.println("Error: BadInput"); break;}
+            }
+            al.set(index,a);
+        }
+        File f = new File(dir);
+        if (f.delete()){
+            System.out.println("Successful file deletion");
+        } else {System.out.println("file is not deleted, exist = " + f.exists());}
+        swf = false;
+        writeAL(al);
+        swf = true;
     }
 }
 
 class Tour implements Serializable{
-    public String companyname;
-    public String country;
-    public Date departuredate;
-    public Date returndate;
-    public Integer amount;
+    String companyname;
+    String country;
+    Date departuredate;
+    Date returndate;
+    Float price;
+    Integer amount;
     private Boolean enabled;
-    public void enable(){this.enabled = true;}
-    public void disable(){this.enabled = false;}
-    public Boolean getEnabled(){return this.enabled;}
+    int index;
+    void enable(){this.enabled = true;}
+    void disable(){this.enabled = false;}
+    Boolean getEnabled(){return this.enabled;}
 }
 
 class AppendingObjectOutputStream extends ObjectOutputStream
