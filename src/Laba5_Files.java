@@ -11,13 +11,11 @@ import java.util.ArrayList;
 public class Laba5_Files {
     private static Scanner ascanner = new Scanner(System.in);
     private static final String dir = "tours.txt";
+    private static final String dirn = "elementsn.txt";
     private static final DateFormat adateform = new SimpleDateFormat("dd.MM.yyyy");
-    private static boolean swf;
-    private static int currenti = 0;
 
     public static void main (String[] args) throws IOException,ClassNotFoundException,ParseException{
         boolean sw = true;
-        swf = false;
         Byte cv = 0;
         while (sw){
             System.out.println("0. Exit \n1. Show All Tours\n2. Add the Tour\n3. Delete the Tour\n4. Edit the Tour");
@@ -54,19 +52,38 @@ public class Laba5_Files {
             }
         } finally{
             ois.close();
+            fis.close();
         }
     }
 
     private static void addTour() throws IOException,ParseException{
         ObjectOutputStream oos;
         File f = new File(dir);
-        if ((!f.exists()) || (!swf)){
+        File f1 = new File(dirn);
+        boolean tmp = false;
+        int current = 0;
+        if ((f.exists()) && (f1.exists())){
+            FileInputStream fis = new FileInputStream(dir);
+            DataInputStream is = new DataInputStream(new FileInputStream(dirn));
+            current = is.readInt();
+            System.out.print("current" + current);
+            if (fis.available() == 0){
+                tmp = true;
+            }
+            fis.close();
+            is.close();
+        }
+        if ((!f.exists()) || (tmp)){
             oos = new ObjectOutputStream(new FileOutputStream(dir,true));
         }
         else{
             oos = new AppendingObjectOutputStream(new FileOutputStream(dir,true));
         }
         try {
+            DataOutputStream dosn = new DataOutputStream(new FileOutputStream(dirn));
+            dosn.writeInt(current + 1);
+            dosn.flush();
+            dosn.close();
             Tour t = new Tour();
             System.out.print("Company name: ");                      t.companyname = ascanner.next();
             System.out.print("Country: ");                           t.country = ascanner.next();
@@ -75,8 +92,7 @@ public class Laba5_Files {
             System.out.print("Price [_,_]: ");                       t.price = ascanner.nextFloat();
             System.out.print("Amount of vouchers: ");                t.amount = ascanner.nextInt();
             t.enable();
-            t.index = currenti++;
-            swf = true;
+            t.index = current;
             oos.writeObject(t);
         } finally {
             oos.flush();
@@ -92,9 +108,7 @@ public class Laba5_Files {
         al.set(index,a);
         File f = new File(dir);
         if (f.delete()){System.out.println("Successful file deletion");} else {System.out.print("file is not deleted");}
-        swf = false;
         writeAL(al);
-        swf = true;
     }
 
     private static ArrayList<Tour> getAL() throws ClassNotFoundException, IOException, EOFException {
@@ -113,8 +127,15 @@ public class Laba5_Files {
 
     private static void writeAL(ArrayList<Tour> al) throws IOException,ClassNotFoundException{
         ObjectOutputStream oos;
+        boolean tmp = false;
         File f = new File(dir);
-        if ((!f.exists()) || (!swf)){
+        if (f.exists()) {
+            FileInputStream fis = new FileInputStream(dir);
+            if (fis.available() == 0)
+                tmp = true;
+            fis.close();
+        }
+        if ((!f.exists()) || (tmp)){
             oos = new ObjectOutputStream(new FileOutputStream(dir,false));
         }
         else{
@@ -123,7 +144,6 @@ public class Laba5_Files {
         for (Tour i: al) {
             oos.writeObject(i);
         }
-        swf = true;
         oos.flush();
         oos.close();
     }
@@ -171,9 +191,7 @@ public class Laba5_Files {
         if (f.delete()){
             System.out.println("Successful file deletion");
         } else {System.out.println("file is not deleted, exist = " + f.exists());}
-        swf = false;
         writeAL(al);
-        swf = true;
     }
 }
 
@@ -203,6 +221,8 @@ class AppendingObjectOutputStream extends ObjectOutputStream
         reset();
     }
 }
+
+//Seems to break when all the objects are "deleted" and the program is used for the first time
 
 /*
 Контрольные вопросы
